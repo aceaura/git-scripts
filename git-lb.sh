@@ -71,4 +71,4 @@ done | fzf --ansi --no-sort --tac --height=100% --no-hscroll \
     --bind 'pgup:preview-page-up' \
     --bind 'left:first' \
     --bind 'right:last' \
-    --header '↑↓选择 | ←最旧 →最新 | Enter详情 | PgUp/PgDn翻页 | Esc退出'
+    --header '↑↓←→选择 | Enter详情 | PgUp/PgDn翻页 | Esc退出'
