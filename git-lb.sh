@@ -63,10 +63,12 @@ git log --oneline --color=always --format="%C(yellow)%h%C(reset) %C(cyan)%ad %C(
         }
         print line
     }'
-done | fzf --ansi --no-sort --tac --height=100% \
+done | fzf --ansi --no-sort --tac --height=100% --no-hscroll \
     --preview 'git show --color=always {1}' \
     --preview-window=right:60%:wrap \
     --bind 'enter:execute(git show --color=always {1} | less -R)' \
     --bind 'pgdn:preview-page-down' \
     --bind 'pgup:preview-page-up' \
-    --header '↑↓选择 | Enter查看详情 | PageUp/PageDown翻页预览 | Esc退出'
+    --bind 'left:first' \
+    --bind 'right:last' \
+    --header '↑↓选择 | ←最旧 →最新 | Enter详情 | PgUp/PgDn翻页 | Esc退出'
