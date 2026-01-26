@@ -2,7 +2,7 @@
 # git-l: 显示简洁的 git log，带图形和装饰
 # 用法: git l
 
-git log --decorate -n 100 --format='%C(yellow)%h %C(cyan)%ar %C(green)%an%C(reset)%C(auto)%d%C(reset) %s' --reverse "$@" | awk '{
+git -c color.ui=always log --decorate -n 100 --format='%C(yellow)%h %C(cyan)%ar %C(green)%an%C(reset)%C(auto)%d%C(reset) %s' --reverse "$@" | awk '{
     # 找到绿色作者名 \033[32m....\033[0m 并截断
     line=$0
     if(match(line, /\033\[32m[^\033]+\033\[0m/)) {
