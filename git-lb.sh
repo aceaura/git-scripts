@@ -122,7 +122,7 @@ while true; do
                 --bind 'pgup:preview-page-up' \
                 --bind 'left:page-up' \
                 --bind 'right:page-down' \
-                --header "[$hash] ↑↓选择 | ←→翻页 | Enter详情 | PgUp/PgDn预览 | Esc返回")
+                --header "↑↓选择 | ←→翻页 | Enter详情 | PgUp/PgDn预览 | Esc返回")
         
         [ -z "$file" ] && break
         
