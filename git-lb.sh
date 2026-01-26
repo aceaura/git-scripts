@@ -99,7 +99,7 @@ generate_files() {
 while true; do
     commit=$(generate_commits | fzf --ansi --no-sort --tac --height=100% --no-hscroll \
         --preview 'git show --stat --color=always {1}' \
-        --preview-window=right:60%:wrap \
+        --preview-window=right:38%:wrap \
         --bind 'pgdn:preview-page-down' \
         --bind 'pgup:preview-page-up' \
         --bind 'left:page-up' \
@@ -117,7 +117,7 @@ while true; do
                 --with-nth=2.. \
                 --delimiter='\t' \
                 --preview "git show --color=always $hash -- {1}" \
-                --preview-window=right:70%:wrap \
+                --preview-window=right:62%:wrap \
                 --bind 'pgdn:preview-page-down' \
                 --bind 'pgup:preview-page-up' \
                 --bind 'left:page-up' \
