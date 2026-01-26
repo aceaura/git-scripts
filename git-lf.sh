@@ -2,7 +2,9 @@
 # git-lf: 显示详细的 git log，包含文件变更统计
 # 用法: git lf
 
-git -c color.ui=always log --oneline -n 20 --format="%C(yellow)%h%C(reset) %C(cyan)%ad%C(reset) %s %C(green)(%an)%C(reset)" --date=relative --stat | awk -v cols="$(tput cols)" '
+cols=${COLUMNS:-$(tput cols 2>/dev/null || echo 120)}
+
+git -c color.ui=always log --oneline -n 20 --format="%C(yellow)%h%C(reset) %C(cyan)%ad%C(reset) %s %C(green)(%an)%C(reset)" --date=relative --stat "$@" | awk -v cols="$cols" '
 BEGIN {
     indent="        "
     first=1
@@ -61,11 +63,10 @@ function printFiles() {
         for(i=1;i<=2;i++) {
             print indent"\033[35m"lines[i]"\033[0m"
         }
-        # 第三行：... + stat，确保不超宽
+        # 第三行：截断内容 + ... + stat
         ellipsis="..."
         remaining=maxw-statlen-length(ellipsis)-1
         if(remaining>0 && length(lines[3])>remaining) {
-            # 截断第三行内容
             print indent"\033[35m"substr(lines[3],1,remaining)" "ellipsis" \033[33m"stat"\033[0m"
         } else {
             print indent"\033[35m"ellipsis" \033[33m"stat"\033[0m"
