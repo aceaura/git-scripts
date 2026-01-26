@@ -42,7 +42,7 @@ function printFiles() {
     gsub(/^ +/,"",stat)
     statlen=length(stat)
     
-    # 构建所有行，预留最后一行给 stat
+    # 构建所有行
     delete lines
     linecount=0
     cur=""
@@ -56,43 +56,38 @@ function printFiles() {
     }
     if(cur!="") lines[++linecount]=cur
     
-    # 如果行数超过3行，截断到3行
+    # 计算最后一行需要的空间（文件名 + 空格 + stat）
+    lastline_available=maxw-statlen-1
+    
     if(linecount>maxlines) {
-        # 打印前两行
+        # 超过3行，截断
         for(i=1;i<=2;i++) {
             print indent"\033[35m"lines[i]"\033[0m"
         }
-        # 第三行：截断 + ... + stat，确保不换行
-        ellipsis="..."
-        available=maxw-statlen-length(ellipsis)-2
-        if(available>0) {
-            third=substr(lines[3],1,available)
-            print indent"\033[35m"third" "ellipsis" \033[33m"stat"\033[0m"
+        # 第三行截断
+        if(lastline_available>6) {
+            print indent"\033[35m"substr(lines[3],1,lastline_available-4)"... \033[33m"stat"\033[0m"
         } else {
-            print indent"\033[35m"ellipsis" \033[33m"stat"\033[0m"
+            print indent"\033[35m""... \033[33m"stat"\033[0m"
         }
-    } else if(linecount>0) {
-        # 行数<=3
-        if(linecount==1) {
-            # 只有一行，检查是否需要截断
-            available=maxw-statlen-1
-            if(length(lines[1])>available) {
-                print indent"\033[35m"substr(lines[1],1,available-3)"... \033[33m"stat"\033[0m"
-            } else {
-                print indent"\033[35m"lines[1]" \033[33m"stat"\033[0m"
-            }
+    } else if(linecount>1) {
+        # 2-3行
+        for(i=1;i<linecount;i++) {
+            print indent"\033[35m"lines[i]"\033[0m"
+        }
+        # 最后一行
+        if(length(lines[linecount])>lastline_available) {
+            print indent"\033[35m"substr(lines[linecount],1,lastline_available-4)"... \033[33m"stat"\033[0m"
         } else {
-            # 多行，前面的行正常打印
-            for(i=1;i<linecount;i++) {
-                print indent"\033[35m"lines[i]"\033[0m"
-            }
-            # 最后一行检查是否需要截断
-            available=maxw-statlen-1
-            if(length(lines[linecount])>available) {
-                print indent"\033[35m"substr(lines[linecount],1,available-3)"... \033[33m"stat"\033[0m"
-            } else {
-                print indent"\033[35m"lines[linecount]" \033[33m"stat"\033[0m"
-            }
+            print indent"\033[35m"lines[linecount]" \033[33m"stat"\033[0m"
+        }
+    } else if(linecount==1) {
+        # 只有一行，检查总长度
+        if(length(lines[1])+1+statlen>maxw) {
+            # 需要截断
+            print indent"\033[35m"substr(lines[1],1,lastline_available-4)"... \033[33m"stat"\033[0m"
+        } else {
+            print indent"\033[35m"lines[1]" \033[33m"stat"\033[0m"
         }
     }
 }'
