@@ -17,25 +17,32 @@ while IFS= read -r line; do
     fi
 done < <(git log -n 100 --format="%h" --shortstat --reverse)
 
+# 根据修改行数计算颜色
+get_color() {
+    local tc=$1
+    local color
+    if [ $tc -le 47 ]; then
+        color=$((232 + tc / 2))
+        [ $color -gt 255 ] && color=255
+    elif [ $tc -le 100 ]; then
+        color=$((229 - (tc - 48) * 9 / 52))
+    elif [ $tc -le 200 ]; then
+        color=$((220 - (tc - 100) * 12 / 100))
+    elif [ $tc -le 500 ]; then
+        color=$((208 - (tc - 200) * 6 / 300))
+    else
+        color=$((202 - (tc - 500) * 6 / 500))
+        [ $color -lt 196 ] && color=196
+    fi
+    echo $color
+}
+
 # 生成带颜色的 commit 列表
 generate_commits() {
     git log --oneline --color=always --format="%C(yellow)%h%C(reset) %C(cyan)%ad %C(green)%an%C(reset) %s" --date=relative -n 100 --reverse | while IFS= read -r line; do
         hash=$(echo "$line" | sed -n 's/.*\[33m\([a-f0-9]\{7,\}\).*/\1/p')
         tc=${changes[$hash]:-0}
-        
-        if [ $tc -le 47 ]; then
-            color=$((232 + tc / 2))
-            [ $color -gt 255 ] && color=255
-        elif [ $tc -le 100 ]; then
-            color=$((229 - (tc - 48) * 9 / 52))
-        elif [ $tc -le 200 ]; then
-            color=$((220 - (tc - 100) * 12 / 100))
-        elif [ $tc -le 500 ]; then
-            color=$((208 - (tc - 200) * 6 / 300))
-        else
-            color=$((202 - (tc - 500) * 6 / 500))
-            [ $color -lt 196 ] && color=196
-        fi
+        color=$(get_color $tc)
         
         echo "$line" | awk -v color="$color" '{
             line=$0
@@ -70,7 +77,7 @@ generate_commits() {
 # 第一级：选择 commit
 while true; do
     commit=$(generate_commits | fzf --ansi --no-sort --tac --height=100% --no-hscroll \
-        --preview 'git show --color=always {1}' \
+        --preview 'git show --stat --color=always {1}' \
         --preview-window=right:60%:wrap \
         --bind 'pgdn:preview-page-down' \
         --bind 'pgup:preview-page-up' \
@@ -82,19 +89,30 @@ while true; do
     
     hash=$(echo "$commit" | awk '{print $1}')
     
-    # 第二级：选择文件
+    # 第二级：选择文件（带颜色渐变）
     while true; do
-        file=$(git diff-tree --no-commit-id --name-status -r "$hash" | \
-            awk '{
-                status=$1; file=$2
-                if(status=="A") s="\033[32m[+]"
-                else if(status=="D") s="\033[31m[-]"
-                else if(status=="M") s="\033[33m[M]"
-                else s="\033[36m["status"]"
-                print s"\033[0m " file
-            }' | \
+        file=$(git diff-tree --no-commit-id --numstat -r "$hash" | \
+            while read add del filename; do
+                [ -z "$filename" ] && continue
+                # 计算修改行数
+                if [ "$add" = "-" ]; then add=0; fi
+                if [ "$del" = "-" ]; then del=0; fi
+                tc=$((add + del))
+                color=$(get_color $tc)
+                
+                # 状态标记
+                if [ "$del" = "0" ] && [ "$add" != "0" ]; then
+                    status="\033[32m[+$add]"
+                elif [ "$add" = "0" ] && [ "$del" != "0" ]; then
+                    status="\033[31m[-$del]"
+                else
+                    status="\033[33m[+$add -$del]"
+                fi
+                
+                echo -e "$status \033[38;5;${color}m$filename\033[0m"
+            done | \
             fzf --ansi --no-sort --height=100% \
-                --preview "git show --color=always $hash -- {2}" \
+                --preview "git show --color=always $hash -- \$(echo {} | sed 's/.*\] //')" \
                 --preview-window=right:70%:wrap \
                 --bind 'pgdn:preview-page-down' \
                 --bind 'pgup:preview-page-up' \
@@ -103,7 +121,7 @@ while true; do
         [ -z "$file" ] && break
         
         # 第三级：查看文件 diff
-        filename=$(echo "$file" | awk '{print $2}')
+        filename=$(echo "$file" | sed 's/.*\] //')
         git show --color=always "$hash" -- "$filename" | less -R
     done
 done
