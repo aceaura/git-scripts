@@ -11,6 +11,35 @@ BIN_DIR="$HOME/.git-scripts-bin"
 # 确保 bin 目录存在
 mkdir -p "$BIN_DIR"
 
+# 自动添加 PATH
+add_to_path() {
+    local shell_rc=""
+    local path_line="export PATH=\"\$HOME/.git-scripts-bin:\$PATH\""
+    
+    # 检测当前 shell 配置文件
+    if [ -n "$ZSH_VERSION" ] || [ -f "$HOME/.zshrc" ]; then
+        shell_rc="$HOME/.zshrc"
+    elif [ -n "$BASH_VERSION" ] || [ -f "$HOME/.bashrc" ]; then
+        shell_rc="$HOME/.bashrc"
+    elif [ -f "$HOME/.profile" ]; then
+        shell_rc="$HOME/.profile"
+    fi
+    
+    # 如果找到配置文件且未添加过，则添加
+    if [ -n "$shell_rc" ]; then
+        if ! grep -q ".git-scripts-bin" "$shell_rc" 2>/dev/null; then
+            echo "" >> "$shell_rc"
+            echo "# git-scripts bin path" >> "$shell_rc"
+            echo "$path_line" >> "$shell_rc"
+            echo "已添加 PATH 到 $shell_rc"
+            echo "请运行: source $shell_rc 或重新打开终端"
+        fi
+    fi
+    
+    # 当前会话也添加
+    export PATH="$BIN_DIR:$PATH"
+}
+
 # 克隆或更新仓库
 if [ -d "$REPO_DIR" ]; then
     cd "$REPO_DIR"
@@ -58,12 +87,11 @@ git config --global alias.sl '!f() { curl -sSL https://raw.githubusercontent.com
 
 git config --global alias.sd '!f() { if [ -z "$1" ]; then echo "用法: git sd <name>"; exit 1; fi; NAME="$1"; REPO_URL="https://github.com/aceaura/git-scripts"; REPO_DIR="$HOME/.git-scripts-sync"; BIN_DIR="$HOME/.git-scripts-bin"; SCRIPT="git-$NAME"; if [ -f "$BIN_DIR/$SCRIPT" ]; then rm -f "$BIN_DIR/$SCRIPT"; echo "已删除本地: $SCRIPT"; fi; if git config --global --get "alias.$NAME" >/dev/null 2>&1; then git config --global --unset "alias.$NAME"; echo "已删除本地 alias: $NAME"; fi; if [ -d "$REPO_DIR" ]; then cd "$REPO_DIR"; git fetch origin; git reset --hard origin/main 2>/dev/null || git reset --hard origin/master; else git clone "$REPO_URL" "$REPO_DIR"; cd "$REPO_DIR"; fi; if [ -f "$REPO_DIR/$SCRIPT.sh" ]; then rm -f "$REPO_DIR/$SCRIPT.sh"; git add -A; git commit -m "sync: delete $SCRIPT"; git push origin HEAD; echo "已删除远端: $SCRIPT.sh"; fi; }; f'
 
+# 自动添加 PATH
+add_to_path
+
 echo ""
 echo "安装完成！"
-echo ""
-echo "注意: 请确保 ~/.git-scripts-bin 在你的 PATH 中"
-echo "如果没有，请添加到 ~/.bashrc 或 ~/.zshrc:"
-echo '  export PATH="$HOME/.git-scripts-bin:$PATH"'
 echo ""
 echo "当前所有 git alias:"
 git config --global --get-regexp '^alias\.' | sort
