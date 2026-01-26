@@ -20,18 +20,17 @@ BEGIN {
     first=0
     # 截断作者名：取第一个非字母数字前的部分，最多8字符
     line=$0
-    # 匹配绿色作者名并截断
-    if(match(line, /\033\[32m[^\033]+\033\[0m/)) {
-        prefix=substr(line, 1, RSTART+4)
-        author=substr(line, RSTART+5)
-        if(match(author, /[^\033]*/)) {
-            fullname=substr(author, 1, RLENGTH)
-            rest=substr(author, RLENGTH+1)
-            # 截断到第一个非字母数字
-            if(match(fullname, /^[a-zA-Z0-9]+/)) {
-                shortname=substr(fullname, 1, RLENGTH)
+    # 匹配绿色作者名并截断: ESC[32m....ESC[m 或 ESC[0m
+    if(match(line, /\033\[32m/)) {
+        prefix=substr(line, 1, RSTART+RLENGTH-1)
+        rest=substr(line, RSTART+RLENGTH)
+        if(match(rest, /\033\[0?m/)) {
+            author=substr(rest, 1, RSTART-1)
+            suffix=substr(rest, RSTART)
+            if(match(author, /^[a-zA-Z0-9]+/)) {
+                shortname=substr(author, 1, RLENGTH)
                 if(length(shortname)>8) shortname=substr(shortname,1,8)
-                line=prefix shortname rest
+                line=prefix shortname suffix
             }
         }
     }

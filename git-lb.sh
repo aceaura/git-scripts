@@ -6,12 +6,12 @@
 git log --oneline --color=always --format="%C(yellow)%h%C(reset) %C(cyan)%ad %C(green)%an%C(reset) %s" --date=relative -n 100 | \
 awk '{
     line=$0
-    if(match(line, /\033\[32m[^\033]+\033\[0m/)) {
-        prefix=substr(line, 1, RSTART+4)
-        rest=substr(line, RSTART+5)
-        if(match(rest, /[^\033]*/)) {
-            author=substr(rest, 1, RLENGTH)
-            suffix=substr(rest, RLENGTH+1)
+    if(match(line, /\033\[32m/)) {
+        prefix=substr(line, 1, RSTART+RLENGTH-1)
+        rest=substr(line, RSTART+RLENGTH)
+        if(match(rest, /\033\[0?m/)) {
+            author=substr(rest, 1, RSTART-1)
+            suffix=substr(rest, RSTART)
             if(match(author, /^[a-zA-Z0-9]+/)) {
                 short=substr(author, 1, RLENGTH)
                 if(length(short)>8) short=substr(short,1,8)
