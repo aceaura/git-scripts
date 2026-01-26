@@ -6,6 +6,10 @@ set -e
 
 REPO_URL="https://github.com/aceaura/git-scripts"
 REPO_DIR="$HOME/.git-scripts-sync"
+BIN_DIR="$HOME/bin"
+
+# 确保 bin 目录存在
+mkdir -p "$BIN_DIR"
 
 # 克隆或更新仓库
 if [ -d "$REPO_DIR" ]; then
@@ -24,32 +28,42 @@ git config --global --get-regexp '^alias\.' 2>/dev/null | while read -r line; do
     git config --global --unset "$alias_name" 2>/dev/null || true
 done
 
-# 从 .sh 文件动态安装 alias
+# 安装脚本到 bin 目录，并创建对应的 alias
 echo "安装远端所有 git alias..."
 for script in "$REPO_DIR"/git-*.sh; do
     [ -f "$script" ] || continue
-    name=$(basename "$script" .sh | sed 's/^git-//')
-    # 跳过同步相关的脚本，它们需要特殊处理
-    case "$name" in s|sr|sl|sd) continue ;; esac
+    name=$(basename "$script" .sh)
+    alias_name=$(echo "$name" | sed 's/^git-//')
     
-    # 读取脚本内容（跳过 shebang 和注释）
-    content=$(sed '/^#!/d; /^#/d; /^$/d' "$script" | tr '\n' '; ' | sed 's/; $//')
+    # 跳过同步相关的脚本
+    case "$alias_name" in s|sr|sl|sd) continue ;; esac
     
-    echo "安装: alias.$name"
-    git config --global "alias.$name" "!$content"
+    # 复制脚本到 bin 目录
+    cp "$script" "$BIN_DIR/$name"
+    chmod +x "$BIN_DIR/$name"
+    
+    # 创建 alias 指向脚本
+    echo "安装: alias.$alias_name -> $name"
+    git config --global "alias.$alias_name" "!$name"
 done
 
-# 安装同步命令（s, sr, sl, sd）- 这些需要内联
+# 安装同步命令
 echo "安装同步命令..."
 
-git config --global alias.s '!f() { REPO_URL="https://github.com/aceaura/git-scripts"; REPO_DIR="$HOME/.git-scripts-sync"; if [ -d "$REPO_DIR" ]; then cd "$REPO_DIR"; git fetch origin; git reset --hard origin/main 2>/dev/null || git reset --hard origin/master; else git clone "$REPO_URL" "$REPO_DIR"; cd "$REPO_DIR"; fi; for script in "$REPO_DIR"/git-*.sh; do [ -f "$script" ] || continue; name=$(basename "$script" .sh | sed "s/^git-//"); case "$name" in s|sr|sl|sd) continue ;; esac; if ! git config --global --get "alias.$name" >/dev/null 2>&1; then content=$(sed "/^#!/d; /^#/d; /^$/d" "$script" | tr "\\n" "; " | sed "s/; $//"); echo "安装: alias.$name"; git config --global "alias.$name" "!$content"; fi; done; LOCAL=$(git config --global --get-regexp "^alias\\." 2>/dev/null | grep -v "alias\\.s[rld]\\? " | sort); cd "$REPO_DIR"; CHANGED=0; for alias_line in $LOCAL; do alias_name=$(echo "$alias_line" | cut -d" " -f1 | sed "s/alias\\.//"); script_file="$REPO_DIR/git-$alias_name.sh"; if [ ! -f "$script_file" ]; then echo "上传: $alias_name"; alias_value=$(git config --global --get "alias.$alias_name"); echo "#!/bin/bash" > "$script_file"; echo "$alias_value" | sed "s/^!//" >> "$script_file"; CHANGED=1; fi; done; if [ $CHANGED -eq 1 ]; then git add -A; git commit -m "sync: upload local aliases"; git push origin HEAD; fi; echo "同步完成"; }; f'
+git config --global alias.s '!f() { REPO_URL="https://github.com/aceaura/git-scripts"; REPO_DIR="$HOME/.git-scripts-sync"; BIN_DIR="$HOME/bin"; mkdir -p "$BIN_DIR"; if [ -d "$REPO_DIR" ]; then cd "$REPO_DIR"; git fetch origin; git reset --hard origin/main 2>/dev/null || git reset --hard origin/master; else git clone "$REPO_URL" "$REPO_DIR"; cd "$REPO_DIR"; fi; UPLOADED=0; DOWNLOADED=0; for script in "$REPO_DIR"/git-*.sh; do [ -f "$script" ] || continue; name=$(basename "$script" .sh); alias_name=$(echo "$name" | sed "s/^git-//"); case "$alias_name" in s|sr|sl|sd) continue ;; esac; if [ ! -f "$BIN_DIR/$name" ]; then echo "下载: $alias_name"; cp "$script" "$BIN_DIR/$name"; chmod +x "$BIN_DIR/$name"; git config --global "alias.$alias_name" "!$name"; DOWNLOADED=1; fi; done; for bin_script in "$BIN_DIR"/git-*.sh; do [ -f "$bin_script" ] || continue; name=$(basename "$bin_script" .sh); alias_name=$(echo "$name" | sed "s/^git-//"); case "$alias_name" in s|sr|sl|sd) continue ;; esac; if [ ! -f "$REPO_DIR/$name.sh" ]; then echo "上传: $alias_name"; cp "$bin_script" "$REPO_DIR/$name.sh"; UPLOADED=1; fi; done; if [ $UPLOADED -eq 1 ]; then cd "$REPO_DIR"; git add -A; git commit -m "sync: upload local aliases"; git push origin HEAD; fi; if [ $UPLOADED -eq 0 ] && [ $DOWNLOADED -eq 0 ]; then echo "已同步，无需操作"; else echo "同步完成"; fi; }; f'
 
-git config --global alias.sr '!f() { REPO_URL="https://github.com/aceaura/git-scripts"; REPO_DIR="$HOME/.git-scripts-sync"; if [ -d "$REPO_DIR" ]; then cd "$REPO_DIR"; git fetch origin; git reset --hard origin/main 2>/dev/null || git reset --hard origin/master; else git clone "$REPO_URL" "$REPO_DIR"; cd "$REPO_DIR"; fi; rm -f "$REPO_DIR"/git-*.sh; LOCAL=$(git config --global --get-regexp "^alias\\." 2>/dev/null | grep -v "alias\\.s[rld]\\? "); echo "$LOCAL" | while IFS= read -r line; do [ -z "$line" ] && continue; alias_name=$(echo "$line" | cut -d" " -f1 | sed "s/alias\\.//"); alias_value=$(git config --global --get "alias.$alias_name"); script_file="$REPO_DIR/git-$alias_name.sh"; echo "上传: $alias_name"; echo "#!/bin/bash" > "$script_file"; echo "$alias_value" | sed "s/^!//" >> "$script_file"; done; git add -A; git commit -m "sync: force upload all local aliases"; git push origin HEAD --force; echo "已强制用本地 alias 覆盖远端"; }; f'
+git config --global alias.sr '!f() { REPO_URL="https://github.com/aceaura/git-scripts"; REPO_DIR="$HOME/.git-scripts-sync"; BIN_DIR="$HOME/bin"; if [ -d "$REPO_DIR" ]; then cd "$REPO_DIR"; git fetch origin; git reset --hard origin/main 2>/dev/null || git reset --hard origin/master; else git clone "$REPO_URL" "$REPO_DIR"; cd "$REPO_DIR"; fi; rm -f "$REPO_DIR"/git-*.sh; for bin_script in "$BIN_DIR"/git-*.sh; do [ -f "$bin_script" ] || continue; name=$(basename "$bin_script"); echo "上传: $name"; cp "$bin_script" "$REPO_DIR/$name"; done; cd "$REPO_DIR"; git add -A; git commit -m "sync: force upload all local aliases"; git push origin HEAD --force; echo "已强制用本地覆盖远端"; }; f'
 
-git config --global alias.sl '!f() { REPO_URL="https://github.com/aceaura/git-scripts"; REPO_DIR="$HOME/.git-scripts-sync"; if [ -d "$REPO_DIR" ]; then cd "$REPO_DIR"; git fetch origin; git reset --hard origin/main 2>/dev/null || git reset --hard origin/master; else git clone "$REPO_URL" "$REPO_DIR"; cd "$REPO_DIR"; fi; echo "删除本地所有 git alias..."; git config --global --get-regexp "^alias\\." 2>/dev/null | while read -r line; do alias_name=$(echo "$line" | cut -d" " -f1); git config --global --unset "$alias_name" 2>/dev/null || true; done; echo "安装远端所有 git alias..."; for script in "$REPO_DIR"/git-*.sh; do [ -f "$script" ] || continue; name=$(basename "$script" .sh | sed "s/^git-//"); case "$name" in s|sr|sl|sd) continue ;; esac; content=$(sed "/^#!/d; /^#/d; /^$/d" "$script" | tr "\\n" "; " | sed "s/; $//"); echo "安装: alias.$name"; git config --global "alias.$name" "!$content"; done; git config --global alias.s "!f() { REPO_URL=\"https://github.com/aceaura/git-scripts\"; REPO_DIR=\"\$HOME/.git-scripts-sync\"; if [ -d \"\$REPO_DIR\" ]; then cd \"\$REPO_DIR\"; git fetch origin; git reset --hard origin/main 2>/dev/null || git reset --hard origin/master; else git clone \"\$REPO_URL\" \"\$REPO_DIR\"; cd \"\$REPO_DIR\"; fi; echo \"同步完成\"; }; f"; git config --global alias.sr "!echo sr"; git config --global alias.sl "!echo sl"; git config --global alias.sd "!echo sd"; echo "已强制用远端 alias 覆盖本地"; }; f'
+git config --global alias.sl '!f() { curl -sSL https://raw.githubusercontent.com/aceaura/git-scripts/master/install.sh | bash; }; f'
 
-git config --global alias.sd '!f() { if [ -z "$1" ]; then echo "用法: git sd <name>"; exit 1; fi; ALIAS_NAME="$1"; REPO_URL="https://github.com/aceaura/git-scripts"; REPO_DIR="$HOME/.git-scripts-sync"; if git config --global --get "alias.$ALIAS_NAME" >/dev/null 2>&1; then git config --global --unset "alias.$ALIAS_NAME"; echo "已删除本地: alias.$ALIAS_NAME"; else echo "本地不存在: alias.$ALIAS_NAME"; fi; if [ -d "$REPO_DIR" ]; then cd "$REPO_DIR"; git fetch origin; git reset --hard origin/main 2>/dev/null || git reset --hard origin/master; else git clone "$REPO_URL" "$REPO_DIR"; cd "$REPO_DIR"; fi; script_file="$REPO_DIR/git-$ALIAS_NAME.sh"; if [ -f "$script_file" ]; then rm -f "$script_file"; git add -A; git commit -m "sync: delete alias.$ALIAS_NAME"; git push origin HEAD; echo "已删除远端: alias.$ALIAS_NAME"; else echo "远端不存在: alias.$ALIAS_NAME"; fi; }; f'
+git config --global alias.sd '!f() { if [ -z "$1" ]; then echo "用法: git sd <name>"; exit 1; fi; NAME="$1"; REPO_URL="https://github.com/aceaura/git-scripts"; REPO_DIR="$HOME/.git-scripts-sync"; BIN_DIR="$HOME/bin"; SCRIPT="git-$NAME.sh"; if [ -f "$BIN_DIR/$SCRIPT" ]; then rm -f "$BIN_DIR/$SCRIPT"; echo "已删除本地: $SCRIPT"; fi; if git config --global --get "alias.$NAME" >/dev/null 2>&1; then git config --global --unset "alias.$NAME"; echo "已删除本地 alias: $NAME"; fi; if [ -d "$REPO_DIR" ]; then cd "$REPO_DIR"; git fetch origin; git reset --hard origin/main 2>/dev/null || git reset --hard origin/master; else git clone "$REPO_URL" "$REPO_DIR"; cd "$REPO_DIR"; fi; if [ -f "$REPO_DIR/$SCRIPT" ]; then rm -f "$REPO_DIR/$SCRIPT"; git add -A; git commit -m "sync: delete $SCRIPT"; git push origin HEAD; echo "已删除远端: $SCRIPT"; fi; }; f'
 
 echo ""
-echo "安装完成！当前所有 git alias:"
+echo "安装完成！"
+echo ""
+echo "注意: 请确保 ~/bin 在你的 PATH 中"
+echo "如果没有，请添加到 ~/.bashrc 或 ~/.zshrc:"
+echo '  export PATH="$HOME/bin:$PATH"'
+echo ""
+echo "当前所有 git alias:"
 git config --global --get-regexp '^alias\.' | sort
