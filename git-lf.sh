@@ -60,15 +60,24 @@ END {
 }
 function printCommit(i) {
     tc=changes[i]
-    # 颜色渐变：灰->白->黄->橙->红
-    if(tc <= 5) color = 240       # 深灰
-    else if(tc <= 15) color = 245 # 灰
-    else if(tc <= 30) color = 252 # 浅灰/白
-    else if(tc <= 60) color = 228 # 浅黄
-    else if(tc <= 100) color = 220 # 黄
-    else if(tc <= 200) color = 214 # 橙
-    else if(tc <= 500) color = 208 # 深橙
-    else color = 196              # 红
+    # 96级颜色渐变: 232-255(灰度24级) + 彩色(黄->橙->红)
+    if(tc <= 47) {
+        color = 232 + int(tc / 2)
+        if(color > 255) color = 255
+    } else if(tc <= 100) {
+        # 48-100: 浅黄到黄 (229-220)
+        color = 229 - int((tc - 48) * 9 / 52)
+    } else if(tc <= 200) {
+        # 100-200: 黄到橙 (220-208)
+        color = 220 - int((tc - 100) * 12 / 100)
+    } else if(tc <= 500) {
+        # 200-500: 橙到深橙 (208-202)
+        color = 208 - int((tc - 200) * 6 / 300)
+    } else {
+        # 500+: 深橙到红 (202-196)
+        color = 202 - int((tc - 500) * 6 / 500)
+        if(color < 196) color = 196
+    }
     
     line=commits[i]
     lastpos = 0
