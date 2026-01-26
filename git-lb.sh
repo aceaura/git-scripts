@@ -26,7 +26,7 @@ generate_commits() {
         changes[idx]=tc
         next
     }
-    phase==2 && /^\033/ {
+    phase==2 && /\033\[/ {
         line=$0
         hash=""
         if(match(line, /\033\[33m[a-f0-9]+/)) {
