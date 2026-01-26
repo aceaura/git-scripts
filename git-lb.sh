@@ -102,9 +102,9 @@ while true; do
         --preview-window=right:60%:wrap \
         --bind 'pgdn:preview-page-down' \
         --bind 'pgup:preview-page-up' \
-        --bind 'left:first' \
-        --bind 'right:last' \
-        --header '↑↓←→选择 | Enter选择文件 | PgUp/PgDn翻页 | Esc退出')
+        --bind 'left:page-up' \
+        --bind 'right:page-down' \
+        --header '↑↓选择 | ←→翻页 | Enter详情 | PgUp/PgDn预览 | Esc退出')
     
     [ -z "$commit" ] && break
     
@@ -120,7 +120,9 @@ while true; do
                 --preview-window=right:70%:wrap \
                 --bind 'pgdn:preview-page-down' \
                 --bind 'pgup:preview-page-up' \
-                --header "[$hash] ↑↓选择文件 | Enter查看diff | Esc返回")
+                --bind 'left:page-up' \
+                --bind 'right:page-down' \
+                --header "[$hash] ↑↓选择 | ←→翻页 | Enter详情 | PgUp/PgDn预览 | Esc返回")
         
         [ -z "$file" ] && break
         
