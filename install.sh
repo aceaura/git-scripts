@@ -13,6 +13,11 @@ mkdir -p "$BIN_DIR"
 
 # 自动添加 PATH
 add_to_path() {
+    # 检查当前 PATH 是否已包含
+    if echo "$PATH" | grep -q ".git-scripts-bin"; then
+        return
+    fi
+    
     local shell_rc=""
     local path_line="export PATH=\"\$HOME/.git-scripts-bin:\$PATH\""
     
