@@ -4,7 +4,7 @@
 
 cols=${COLUMNS:-$(tput cols 2>/dev/null || echo 120)}
 
-git -c color.ui=always log --oneline -n 100 --format="%C(yellow)%h%C(reset) %C(cyan)%ad%C(reset) %s %C(green)(%an)%C(reset)" --date=relative --stat --reverse "$@" | awk -v cols="$cols" '
+git -c color.ui=always log --oneline -n 100 --format="%C(yellow)%h%C(reset) %C(cyan)%ad %C(green)%an%C(reset) %s" --date=relative --stat --reverse "$@" | awk -v cols="$cols" '
 BEGIN {
     indent="        "
     first=1
@@ -18,7 +18,23 @@ BEGIN {
         if(!first) print ""
     }
     first=0
+    # 截断作者名：取第一个非字母数字前的部分，最多8字符
     line=$0
+    # 匹配绿色作者名并截断
+    if(match(line, /\033\[32m[^\033]+\033\[0m/)) {
+        prefix=substr(line, 1, RSTART+4)
+        author=substr(line, RSTART+5)
+        if(match(author, /[^\033]*/)) {
+            fullname=substr(author, 1, RLENGTH)
+            rest=substr(author, RLENGTH+1)
+            # 截断到第一个非字母数字
+            if(match(fullname, /^[a-zA-Z0-9]+/)) {
+                shortname=substr(fullname, 1, RLENGTH)
+                if(length(shortname)>8) shortname=substr(shortname,1,8)
+                line=prefix shortname rest
+            }
+        }
+    }
     delete arr
     n=0
     stat=""
