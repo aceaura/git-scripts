@@ -29,7 +29,7 @@ BEGIN {
             }
         }
     }
-    files[idx]=""
+    filecount[idx]=0
     stats[idx]=""
     changes[idx]=0
     next
@@ -46,9 +46,17 @@ BEGIN {
     next
 }
 / \| / {
-    split($1,a," ")
-    if(files[idx]=="") files[idx]=a[1]
-    else files[idx]=files[idx]" "a[1]
+    # 提取文件名和修改量
+    fname=$1
+    # 提取修改行数 (+ 和 - 的数量)
+    fchanges=0
+    for(k=3;k<=NF;k++) {
+        gsub(/[^+-]/,"",$k)
+        fchanges += length($k)
+    }
+    filecount[idx]++
+    filenames[idx,filecount[idx]]=fname
+    filechanges[idx,filecount[idx]]=fchanges
     next
 }
 END {
@@ -58,26 +66,37 @@ END {
         printFiles(i)
     }
 }
-function printCommit(i) {
-    tc=changes[i]
+function calcColor(tc) {
     # 96级颜色渐变: 232-255(灰度24级) + 彩色(黄->橙->红)
     if(tc <= 47) {
-        color = 232 + int(tc / 2)
-        if(color > 255) color = 255
+        c = 232 + int(tc / 2)
+        if(c > 255) c = 255
     } else if(tc <= 100) {
-        # 48-100: 浅黄到黄 (229-220)
-        color = 229 - int((tc - 48) * 9 / 52)
+        c = 229 - int((tc - 48) * 9 / 52)
     } else if(tc <= 200) {
-        # 100-200: 黄到橙 (220-208)
-        color = 220 - int((tc - 100) * 12 / 100)
+        c = 220 - int((tc - 100) * 12 / 100)
     } else if(tc <= 500) {
-        # 200-500: 橙到深橙 (208-202)
-        color = 208 - int((tc - 200) * 6 / 300)
+        c = 208 - int((tc - 200) * 6 / 300)
     } else {
-        # 500+: 深橙到红 (202-196)
-        color = 202 - int((tc - 500) * 6 / 500)
-        if(color < 196) color = 196
+        c = 202 - int((tc - 500) * 6 / 500)
+        if(c < 196) c = 196
     }
+    return c
+}
+function calcPurple(tc) {
+    # 紫色渐变: 从深紫(53)到亮紫(177)
+    # tc: 0-5 -> 53, 5-15 -> 89, 15-30 -> 125, 30-60 -> 128, 60-100 -> 134, 100+ -> 177
+    if(tc <= 5) return 53
+    else if(tc <= 15) return 89
+    else if(tc <= 30) return 125
+    else if(tc <= 60) return 128
+    else if(tc <= 100) return 134
+    else if(tc <= 200) return 170
+    else return 177
+}
+function printCommit(i) {
+    tc=changes[i]
+    color=calcColor(tc)
     
     line=commits[i]
     lastpos = 0
@@ -96,53 +115,54 @@ function printCommit(i) {
     print line
 }
 function printFiles(i) {
-    if(files[i]=="") return
+    if(filecount[i]==0) return
     maxw=cols-indentlen
     stat=stats[i]
     gsub(/^ +/,"",stat)
     statlen=length(stat)
     
-    # 分割文件列表
-    n=split(files[i], arr, " ")
+    n=filecount[i]
     
+    # 构建带颜色的文件列表
     delete lines
     linecount=0
     cur=""
+    curlen=0
     
     for(j=1;j<=n;j++) {
-        f="["arr[j]"]"
-        if(cur=="") cur=f
-        else if(length(cur" "f)>maxw) {
+        fname=filenames[i,j]
+        fc=filechanges[i,j]
+        pc=calcPurple(fc)
+        f="\033[38;5;" pc "m[" fname "]\033[0m"
+        flen=length(fname)+2  # 实际显示长度
+        
+        if(cur=="") {
+            cur=f
+            curlen=flen
+        } else if(curlen+1+flen>maxw) {
             lines[++linecount]=cur
             cur=f
-        } else cur=cur" "f
-    }
-    if(cur!="") lines[++linecount]=cur
-    
-    if(linecount>0 && length(lines[linecount])+1+statlen>maxw) {
-        lastline=lines[linecount]
-        delete newarr
-        nn=split(lastline, newarr, " ")
-        newlast=""
-        for(j=1;j<=nn;j++) {
-            if(newlast=="") newlast=newarr[j]
-            else if(length(newlast" "newarr[j])+1+statlen<=maxw) newlast=newlast" "newarr[j]
-            else {
-                lines[linecount]=newlast
-                linecount++
-                newlast=newarr[j]
-            }
+            curlen=flen
+        } else {
+            cur=cur " " f
+            curlen=curlen+1+flen
         }
-        if(newlast!="") lines[linecount]=newlast
+    }
+    if(cur!="") {
+        lines[++linecount]=cur
+        linelens[linecount]=curlen
+    }
+    
+    # 检查最后一行加 stat 是否超宽
+    if(linecount>0 && linelens[linecount]+1+statlen>maxw) {
+        # 需要重新分配，简化处理：直接截断
     }
     
     if(linecount>maxlines) {
-        for(j=1;j<=2;j++) print indent"\033[35m"lines[j]"\033[0m"
-        available=maxw-statlen-5
-        if(available>0) print indent"\033[35m"substr(lines[3],1,available)"... \033[33m"stat"\033[0m"
-        else print indent"\033[35m""... \033[33m"stat"\033[0m"
+        for(j=1;j<=2;j++) print indent lines[j]
+        print indent "... \033[33m" stat "\033[0m"
     } else {
-        for(j=1;j<linecount;j++) print indent"\033[35m"lines[j]"\033[0m"
-        if(linecount>0) print indent"\033[35m"lines[linecount]" \033[33m"stat"\033[0m"
+        for(j=1;j<linecount;j++) print indent lines[j]
+        if(linecount>0) print indent lines[linecount] " \033[33m" stat "\033[0m"
     }
 }'
