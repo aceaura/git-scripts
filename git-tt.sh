@@ -1,0 +1,9 @@
+#!/bin/bash
+# git-tt: 自动创建并推送 minor 版本 tag (x.Y+1.0)
+# 用法: git tt
+
+latest=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+major=$(echo $latest | sed "s/v//" | cut -d. -f1)
+minor=$(echo $latest | sed "s/v//" | cut -d. -f2)
+new="v${major}.$((minor+1)).0"
+git tag $new && git push origin $new && echo "Tagged and pushed: $new"
