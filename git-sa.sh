@@ -20,4 +20,4 @@ echo "  sd    - 删除指定 alias (git sd <name>)"
 echo "  sa    - 显示此帮助信息"
 echo ""
 echo "当前已安装的 alias:"
-git config --global -l | grep ^alias | cut -d= -f1 | sed 's/alias\./  /' | sort
+git config --global -l | grep ^alias | cut -d= -f1 | sed s/alias.// | sort
