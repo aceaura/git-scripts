@@ -11,6 +11,48 @@ BIN_DIR="$HOME/.git-scripts-bin"
 # 确保 bin 目录存在
 mkdir -p "$BIN_DIR"
 
+# 安装 fzf（如果未安装）
+install_fzf() {
+    if command -v fzf >/dev/null 2>&1; then
+        return
+    fi
+    
+    echo "安装 fzf..."
+    local os_type=""
+    case "$(uname -s)" in
+        Darwin*)  os_type="macos" ;;
+        Linux*)   os_type="linux" ;;
+        MINGW*|MSYS*|CYGWIN*) os_type="windows" ;;
+    esac
+    
+    if [ "$os_type" = "macos" ]; then
+        if command -v brew >/dev/null 2>&1; then
+            brew install fzf
+        else
+            echo "请先安装 Homebrew，然后运行: brew install fzf"
+        fi
+    elif [ "$os_type" = "linux" ]; then
+        if command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y fzf
+        elif command -v yum >/dev/null 2>&1; then
+            sudo yum install -y fzf
+        elif command -v pacman >/dev/null 2>&1; then
+            sudo pacman -S --noconfirm fzf
+        else
+            git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && ~/.fzf/install --all
+        fi
+    elif [ "$os_type" = "windows" ]; then
+        # Windows Git Bash: 下载 fzf 到 bin 目录
+        local fzf_version="0.46.1"
+        local fzf_url="https://github.com/junegunn/fzf/releases/download/${fzf_version}/fzf-${fzf_version}-windows_amd64.zip"
+        local tmp_zip="/tmp/fzf.zip"
+        curl -sL "$fzf_url" -o "$tmp_zip"
+        unzip -o "$tmp_zip" -d "$BIN_DIR" fzf.exe
+        rm -f "$tmp_zip"
+        echo "fzf 已安装到 $BIN_DIR"
+    fi
+}
+
 # 自动添加 PATH
 add_to_path() {
     local shell_rc=""
@@ -147,7 +189,10 @@ git config --global alias.sa '!f() { REPO_URL="https://github.com/aceaura/git-sc
 
 git config --global alias.sc '!f() { REPO_URL="https://github.com/aceaura/git-scripts"; REPO_DIR="$HOME/.git-scripts-sync"; if [ -d "$REPO_DIR" ]; then cd "$REPO_DIR"; git fetch origin >/dev/null 2>&1; git reset --hard origin/main >/dev/null 2>&1 || git reset --hard origin/master >/dev/null 2>&1; else git clone "$REPO_URL" "$REPO_DIR" >/dev/null 2>&1; cd "$REPO_DIR"; fi; REMOTE=""; for script in "$REPO_DIR"/git-*.sh; do [ -f "$script" ] || continue; name=$(basename "$script" .sh | sed "s/^git-//"); case "$name" in s|sr|sl|sd|sa|sc) continue ;; esac; REMOTE="$REMOTE $name"; done; LOCAL=$(git config --global -l 2>/dev/null | grep ^alias | cut -d= -f1 | sed "s/alias\\.//" | grep -v "^s$" | grep -v "^sr$" | grep -v "^sl$" | grep -v "^sd$" | grep -v "^sa$" | grep -v "^sc$" | tr "\\n" " "); NI=""; for name in $REMOTE; do if ! echo " $LOCAL " | grep -q " $name "; then NI="$NI $name"; fi; done; NP=""; for name in $LOCAL; do if ! echo " $REMOTE " | grep -q " $name "; then NP="$NP $name"; fi; done; if [ -z "$NI" ] && [ -z "$NP" ]; then echo "本地和远端已完全同步"; exit 0; fi; if [ -n "$NI" ]; then echo "未安装 (远端有本地没有):"; for name in $NI; do desc=$(sed -n "2p" "$REPO_DIR/git-$name.sh" 2>/dev/null | sed "s/^# git-[^:]*: //" | sed "s/^# //"); printf "   %-14s %s\\n" "$name" "$desc"; done; echo ""; echo "运行 git sl 安装全部，或 git s 同步"; fi; if [ -n "$NP" ]; then if [ -n "$NI" ]; then echo ""; fi; echo "未发布 (本地有远端没有):"; for name in $NP; do echo "   $name"; done; echo ""; echo "运行 git sr 发布全部，或 git s 同步"; fi; }; f'
 
-# 自动添加 PATH
+# 安装 fzf
+install_fzf
+
+# 添加 PATH
 add_to_path
 
 echo ""
