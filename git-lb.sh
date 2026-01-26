@@ -72,7 +72,7 @@ generate_commits() {
     done
 }
 
-# 生成文件列表（带颜色）
+# 生成文件列表（带颜色）- 输出格式: filename|status_display
 generate_files() {
     local hash=$1
     git diff-tree --no-commit-id --numstat -r "$hash" | while read add del filename; do
@@ -90,7 +90,8 @@ generate_files() {
             status="\033[33m[+$add -$del]"
         fi
         
-        printf "%b \033[38;5;%dm%s\033[0m\n" "$status" "$color" "$filename"
+        # 格式: filename TAB status colored_filename
+        printf "%s\t%b \033[38;5;%dm%s\033[0m\n" "$filename" "$status" "$color" "$filename"
     done
 }
 
@@ -113,7 +114,9 @@ while true; do
     while true; do
         file=$(generate_files "$hash" | \
             fzf --ansi --no-sort --height=100% \
-                --preview "f=\$(echo {} | sed 's/^.*] //'); git show --color=always $hash -- \"\$f\"" \
+                --with-nth=2.. \
+                --delimiter='\t' \
+                --preview "git show --color=always $hash -- {1}" \
                 --preview-window=right:70%:wrap \
                 --bind 'pgdn:preview-page-down' \
                 --bind 'pgup:preview-page-up' \
@@ -122,7 +125,7 @@ while true; do
         [ -z "$file" ] && break
         
         # 第三级：查看文件 diff
-        filename=$(echo "$file" | sed 's/^.*] //')
+        filename=$(echo "$file" | cut -f1)
         git show --color=always "$hash" -- "$filename" | less -R
     done
 done
