@@ -8,6 +8,6 @@ fzf --ansi --no-sort --reverse --height=100% \
     --preview 'git show --color=always {1}' \
     --preview-window=right:60%:wrap \
     --bind 'enter:execute(git show --color=always {1} | less -R)' \
-    --bind 'ctrl-d:preview-page-down' \
-    --bind 'ctrl-u:preview-page-up' \
-    --header '↑↓选择 | Enter查看详情 | Ctrl-D/U翻页预览 | Esc退出'
+    --bind 'pgdn:preview-page-down' \
+    --bind 'pgup:preview-page-up' \
+    --header '↑↓选择 | Enter查看详情 | PageUp/PageDown翻页预览 | Esc退出'
