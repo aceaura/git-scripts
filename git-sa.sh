@@ -27,23 +27,23 @@ done
 # 获取本地所有 alias
 LOCAL_ALIASES=$(git config --global -l 2>/dev/null | grep ^alias | cut -d= -f1 | sed 's/alias\.//' | grep -v '^s$\|^sr$\|^sl$\|^sd$\|^sa$' | tr '\n' ' ')
 
-echo "usage: git <alias> [<args>]"
+echo "用法: git <alias> [<args>]"
 echo ""
-echo "Available aliases (remote):"
+echo "可用命令 (远端):"
 for name in $REMOTE_ALIASES; do
     # 读取脚本第二行注释作为描述
     desc=$(sed -n '2p' "$REPO_DIR/git-$name.sh" 2>/dev/null | sed 's/^# git-[^:]*: //' | sed 's/^# //')
     printf "   %-14s %s\n" "$name" "$desc"
 done
 echo ""
-echo "Sync commands (built-in):"
-echo "   s              Sync aliases between local and remote"
-echo "   sr             Force upload local aliases to remote"
-echo "   sl             Force download remote aliases to local"
-echo "   sd <name>      Delete alias from both local and remote"
-echo "   sa             Show this help message"
+echo "同步命令 (内置):"
+echo "   s              双向同步本地和远端的 alias"
+echo "   sr             强制上传本地 alias 到远端"
+echo "   sl             强制下载远端 alias 到本地"
+echo "   sd <name>      同时删除本地和远端的指定 alias"
+echo "   sa             显示此帮助信息"
 
-# Not installed（远端有但本地没有）
+# 未安装（远端有但本地没有）
 NOT_INSTALLED=""
 for name in $REMOTE_ALIASES; do
     if ! echo " $LOCAL_ALIASES " | grep -q " $name "; then
@@ -52,13 +52,13 @@ for name in $REMOTE_ALIASES; do
 done
 if [ -n "$NOT_INSTALLED" ]; then
     echo ""
-    echo "Not installed (run 'git sl' to install):"
+    echo "未安装 (运行 git sl 安装):"
     for name in $NOT_INSTALLED; do
         echo "   $name"
     done
 fi
 
-# Not published（本地有但远端没有）
+# 未发布（本地有但远端没有）
 NOT_PUBLISHED=""
 for name in $LOCAL_ALIASES; do
     if ! echo " $REMOTE_ALIASES " | grep -q " $name "; then
@@ -67,7 +67,7 @@ for name in $LOCAL_ALIASES; do
 done
 if [ -n "$NOT_PUBLISHED" ]; then
     echo ""
-    echo "Not published (run 'git sr' to publish):"
+    echo "未发布 (运行 git sr 发布):"
     for name in $NOT_PUBLISHED; do
         echo "   $name"
     done
