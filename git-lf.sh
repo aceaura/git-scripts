@@ -42,52 +42,71 @@ function printFiles() {
     gsub(/^ +/,"",stat)
     statlen=length(stat)
     
-    # 构建所有行
+    # 构建所有行，最后一行要预留 stat 空间
     delete lines
     linecount=0
     cur=""
+    
     for(i=1;i<=n;i++) {
         f="["arr[i]"]"
-        if(cur=="") cur=f
-        else if(length(cur" "f)>maxw) {
+        if(cur=="") {
+            cur=f
+        } else if(length(cur" "f)>maxw) {
             lines[++linecount]=cur
             cur=f
-        } else cur=cur" "f
+        } else {
+            cur=cur" "f
+        }
     }
     if(cur!="") lines[++linecount]=cur
     
-    # 计算最后一行需要的空间（文件名 + 空格 + stat）
-    lastline_available=maxw-statlen-1
+    # 重新计算：最后一行需要加上 stat，如果放不下就把 stat 单独放一行
+    # 检查最后一行加上 stat 是否超宽
+    if(linecount>0 && length(lines[linecount])+1+statlen>maxw) {
+        # stat 放不下，需要重新分配
+        # 把最后一行的部分文件移到新行，或者 stat 单独一行
+        lastline=lines[linecount]
+        # 尝试拆分最后一行
+        delete newarr
+        split(lastline, newarr, " ")
+        newlast=""
+        for(j in newarr) {
+            if(newlast=="") newlast=newarr[j]
+            else if(length(newlast" "newarr[j])+1+statlen<=maxw) {
+                newlast=newlast" "newarr[j]
+            } else {
+                # 放不下了，把之前的作为新行
+                lines[linecount]=newlast
+                linecount++
+                newlast=newarr[j]
+            }
+        }
+        if(newlast!="") {
+            lines[linecount]=newlast
+        }
+    }
     
+    # 现在输出，最多3行
     if(linecount>maxlines) {
-        # 超过3行，截断
+        # 超过3行，前2行正常打印，第3行截断
         for(i=1;i<=2;i++) {
             print indent"\033[35m"lines[i]"\033[0m"
         }
-        # 第三行截断
-        if(lastline_available>6) {
-            print indent"\033[35m"substr(lines[3],1,lastline_available-4)"... \033[33m"stat"\033[0m"
+        # 第3行：截断 + ... + stat
+        available=maxw-statlen-5
+        if(available>0) {
+            print indent"\033[35m"substr(lines[3],1,available)"... \033[33m"stat"\033[0m"
         } else {
             print indent"\033[35m""... \033[33m"stat"\033[0m"
         }
-    } else if(linecount>1) {
-        # 2-3行
+    } else {
+        # <=3行，正常打印
         for(i=1;i<linecount;i++) {
             print indent"\033[35m"lines[i]"\033[0m"
         }
-        # 最后一行
-        if(length(lines[linecount])>lastline_available) {
-            print indent"\033[35m"substr(lines[linecount],1,lastline_available-4)"... \033[33m"stat"\033[0m"
-        } else {
+        # 最后一行加 stat
+        if(linecount>0) {
             print indent"\033[35m"lines[linecount]" \033[33m"stat"\033[0m"
-        }
-    } else if(linecount==1) {
-        # 只有一行，检查总长度
-        if(length(lines[1])+1+statlen>maxw) {
-            # 需要截断
-            print indent"\033[35m"substr(lines[1],1,lastline_available-4)"... \033[33m"stat"\033[0m"
-        } else {
-            print indent"\033[35m"lines[1]" \033[33m"stat"\033[0m"
         }
     }
 }'
