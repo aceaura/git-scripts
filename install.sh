@@ -13,14 +13,10 @@ mkdir -p "$BIN_DIR"
 
 # 自动添加 PATH
 add_to_path() {
-    # 检查当前 PATH 是否已包含
-    if echo "$PATH" | grep -q ".git-scripts-bin"; then
-        return
-    fi
-    
     local shell_rc=""
     local path_line="export PATH=\"\$HOME/.git-scripts-bin:\$PATH\""
     local os_type=""
+    local need_source=0
     
     # 检测操作系统
     case "$(uname -s)" in
@@ -32,7 +28,6 @@ add_to_path() {
     
     # 根据操作系统和 shell 选择配置文件
     if [ "$os_type" = "macos" ]; then
-        # macOS 默认使用 zsh
         if [ -n "$ZSH_VERSION" ]; then
             shell_rc="$HOME/.zshrc"
         elif [ -f "$HOME/.zshrc" ]; then
@@ -41,7 +36,6 @@ add_to_path() {
             shell_rc="$HOME/.bash_profile"
         fi
     elif [ "$os_type" = "linux" ]; then
-        # Linux 默认使用 bash
         if [ -n "$ZSH_VERSION" ]; then
             shell_rc="$HOME/.zshrc"
         elif [ -f "$HOME/.bashrc" ]; then
@@ -50,17 +44,23 @@ add_to_path() {
             shell_rc="$HOME/.profile"
         fi
     elif [ "$os_type" = "windows" ]; then
-        # Windows Git Bash
         if [ -f "$HOME/.bashrc" ]; then
             shell_rc="$HOME/.bashrc"
         elif [ -f "$HOME/.bash_profile" ]; then
             shell_rc="$HOME/.bash_profile"
         else
-            # Git Bash 默认创建 .bashrc
             shell_rc="$HOME/.bashrc"
         fi
+        
+        # Windows: 尝试添加到用户环境变量（永久生效）
+        if command -v setx >/dev/null 2>&1; then
+            local win_path=$(cygpath -w "$HOME/.git-scripts-bin" 2>/dev/null || echo "$HOME/.git-scripts-bin")
+            # 检查是否已在 Windows PATH 中
+            if ! echo "$PATH" | grep -qi "git-scripts-bin"; then
+                setx PATH "%PATH%;$win_path" >/dev/null 2>&1 || true
+            fi
+        fi
     else
-        # 通用检测
         if [ -n "$ZSH_VERSION" ]; then
             shell_rc="$HOME/.zshrc"
         elif [ -f "$HOME/.bashrc" ]; then
@@ -70,21 +70,30 @@ add_to_path() {
         fi
     fi
     
-    # 如果找到配置文件且未添加过，则添加
+    # 写入配置文件（永久生效）
     if [ -n "$shell_rc" ]; then
-        # 确保文件存在
         touch "$shell_rc"
         if ! grep -q ".git-scripts-bin" "$shell_rc" 2>/dev/null; then
             echo "" >> "$shell_rc"
             echo "# git-scripts bin path" >> "$shell_rc"
             echo "$path_line" >> "$shell_rc"
-            echo "已添加 PATH 到 $shell_rc"
-            echo "请运行: source $shell_rc 或重新打开终端"
+            need_source=1
         fi
     fi
     
-    # 当前会话也添加
+    # 当前会话添加 PATH
     export PATH="$BIN_DIR:$PATH"
+    
+    # 提示用户
+    if [ $need_source -eq 1 ]; then
+        echo ""
+        echo "PATH 已配置到 $shell_rc (永久生效)"
+        echo ""
+        echo "立即生效请运行:"
+        echo "  source $shell_rc"
+        echo ""
+        echo "或重新打开终端"
+    fi
 }
 
 # 克隆或更新仓库
