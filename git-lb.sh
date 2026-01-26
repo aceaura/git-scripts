@@ -14,10 +14,10 @@ while IFS= read -r line; do
         [[ $line =~ ([0-9]+)\ deletion ]] && del="${BASH_REMATCH[1]}"
         changes[$hash]=$((ins + del))
     fi
-done < <(git log -n 100 --format="%h" --shortstat)
+done < <(git log -n 100 --format="%h" --shortstat --reverse)
 
 # 生成带颜色的列表
-git log --oneline --color=always --format="%C(yellow)%h%C(reset) %C(cyan)%ad %C(green)%an%C(reset) %s" --date=relative -n 100 | while IFS= read -r line; do
+git log --oneline --color=always --format="%C(yellow)%h%C(reset) %C(cyan)%ad %C(green)%an%C(reset) %s" --date=relative -n 100 --reverse | while IFS= read -r line; do
     hash=$(echo "$line" | sed -n 's/.*\[33m\([a-f0-9]\{7,\}\).*/\1/p')
     tc=${changes[$hash]:-0}
     
@@ -63,7 +63,7 @@ git log --oneline --color=always --format="%C(yellow)%h%C(reset) %C(cyan)%ad %C(
         }
         print line
     }'
-done | fzf --ansi --no-sort --reverse --height=100% \
+done | fzf --ansi --no-sort --tac --height=100% \
     --preview 'git show --color=always {1}' \
     --preview-window=right:60%:wrap \
     --bind 'enter:execute(git show --color=always {1} | less -R)' \
