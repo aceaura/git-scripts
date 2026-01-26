@@ -4,7 +4,7 @@
 
 cols=${COLUMNS:-$(tput cols 2>/dev/null || echo 120)}
 
-git -c color.ui=always log --oneline -n 20 --format="%C(yellow)%h%C(reset) %C(cyan)%ad%C(reset) %s %C(green)(%an)%C(reset)" --date=relative --stat --reverse "$@" | awk -v cols="$cols" '
+git -c color.ui=always log --oneline -n 100 --format="%C(yellow)%h%C(reset) %C(cyan)%ad%C(reset) %s %C(green)(%an)%C(reset)" --date=relative --stat --reverse "$@" | awk -v cols="$cols" '
 BEGIN {
     indent="        "
     first=1
