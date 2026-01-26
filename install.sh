@@ -20,18 +20,60 @@ add_to_path() {
     
     local shell_rc=""
     local path_line="export PATH=\"\$HOME/.git-scripts-bin:\$PATH\""
+    local os_type=""
     
-    # 检测当前 shell 配置文件
-    if [ -n "$ZSH_VERSION" ] || [ -f "$HOME/.zshrc" ]; then
-        shell_rc="$HOME/.zshrc"
-    elif [ -n "$BASH_VERSION" ] || [ -f "$HOME/.bashrc" ]; then
-        shell_rc="$HOME/.bashrc"
-    elif [ -f "$HOME/.profile" ]; then
-        shell_rc="$HOME/.profile"
+    # 检测操作系统
+    case "$(uname -s)" in
+        Darwin*)  os_type="macos" ;;
+        Linux*)   os_type="linux" ;;
+        MINGW*|MSYS*|CYGWIN*) os_type="windows" ;;
+        *)        os_type="unknown" ;;
+    esac
+    
+    # 根据操作系统和 shell 选择配置文件
+    if [ "$os_type" = "macos" ]; then
+        # macOS 默认使用 zsh
+        if [ -n "$ZSH_VERSION" ]; then
+            shell_rc="$HOME/.zshrc"
+        elif [ -f "$HOME/.zshrc" ]; then
+            shell_rc="$HOME/.zshrc"
+        elif [ -f "$HOME/.bash_profile" ]; then
+            shell_rc="$HOME/.bash_profile"
+        fi
+    elif [ "$os_type" = "linux" ]; then
+        # Linux 默认使用 bash
+        if [ -n "$ZSH_VERSION" ]; then
+            shell_rc="$HOME/.zshrc"
+        elif [ -f "$HOME/.bashrc" ]; then
+            shell_rc="$HOME/.bashrc"
+        elif [ -f "$HOME/.profile" ]; then
+            shell_rc="$HOME/.profile"
+        fi
+    elif [ "$os_type" = "windows" ]; then
+        # Windows Git Bash
+        if [ -f "$HOME/.bashrc" ]; then
+            shell_rc="$HOME/.bashrc"
+        elif [ -f "$HOME/.bash_profile" ]; then
+            shell_rc="$HOME/.bash_profile"
+        else
+            # Git Bash 默认创建 .bashrc
+            shell_rc="$HOME/.bashrc"
+        fi
+    else
+        # 通用检测
+        if [ -n "$ZSH_VERSION" ]; then
+            shell_rc="$HOME/.zshrc"
+        elif [ -f "$HOME/.bashrc" ]; then
+            shell_rc="$HOME/.bashrc"
+        elif [ -f "$HOME/.profile" ]; then
+            shell_rc="$HOME/.profile"
+        fi
     fi
     
     # 如果找到配置文件且未添加过，则添加
     if [ -n "$shell_rc" ]; then
+        # 确保文件存在
+        touch "$shell_rc"
         if ! grep -q ".git-scripts-bin" "$shell_rc" 2>/dev/null; then
             echo "" >> "$shell_rc"
             echo "# git-scripts bin path" >> "$shell_rc"
