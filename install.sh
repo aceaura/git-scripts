@@ -70,9 +70,9 @@ add_to_path() {
     
     # 根据操作系统和 shell 选择配置文件
     if [ "$os_type" = "macos" ]; then
-        if [ -n "$ZSH_VERSION" ]; then
+        if [ -f "$HOME/.zshrc" ]; then
             shell_rc="$HOME/.zshrc"
-        elif [ -f "$HOME/.zshrc" ]; then
+        elif [ -n "$ZSH_VERSION" ]; then
             shell_rc="$HOME/.zshrc"
         elif [ -f "$HOME/.bash_profile" ]; then
             shell_rc="$HOME/.bash_profile"
